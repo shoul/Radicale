@@ -114,6 +114,7 @@ def run():
         exit(1)
 
 
+
 def serve(configuration, logger):
     """Serve radicale from configuration."""
     # Fork if Radicale is launched as daemon
@@ -185,17 +186,27 @@ def serve(configuration, logger):
 
     shutdown_program = False
 
-    for host in configuration.get("server", "hosts").split(","):
-        address, port = host.strip().rsplit(":", 1)
-        address, port = address.strip("[] "), int(port)
-        application = Application(configuration, logger)
-        server = make_server(
-            address, port, application, server_class, RequestHandler)
-        servers[server.socket] = server
-        logger.debug("Listening to %s port %s",
-                     server.server_name, server.server_port)
-        if configuration.getboolean("server", "ssl"):
-            logger.debug("Using SSL")
+##Hook
+    if configuration.has_option("server", "socket"):
+        serve_path = configuration.get("server", "socket")
+        from flup.server.fcgi import WSGIServer
+        from .serve_socket import serve_socket
+        import pdb; pdb.set_trace()
+        WSGIServer(serve_socket, bindAddress=serve_path).run()
+
+    else:
+        for host in configuration.get("server", "hosts").split(","):
+            address, port = host.strip().rsplit(":", 1)
+            address, port = address.strip("[] "), int(port)
+            application = Application(configuration, logger)
+            server = make_server(
+                address, port, application, server_class, RequestHandler)
+            servers[server.socket] = server
+            logger.debug("Listening to %s port %s",
+                         server.server_name, server.server_port)
+            if configuration.getboolean("server", "ssl"):
+                logger.debug("Using SSL")
+##Hook end
 
     # Create a socket pair to notify the select syscall of program shutdown
     # This is not available in python < 3.5 on Windows
